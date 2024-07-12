@@ -1,0 +1,3 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@safe/contracts/=lib/safe/contracts/
+@layerzero/oapp/=lib/layerzero/packages/layerzero-v2/evm/oapp/contracts/oapp/
