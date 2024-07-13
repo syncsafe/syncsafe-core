@@ -215,7 +215,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
   ) internal {
     uint256 providedFee = msg.value;
 
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(500000, 0);
 
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
@@ -230,11 +230,11 @@ contract SyncSafeModule is OApp, HoldsBalance {
   // broadcast safesync update
   function _broadcastNewStateToChains(address[] memory _owners, uint256 _threshold) internal {
     // TODO add a way to use user's safe funds to sponsor the transaction
-    uint256 providedFee = 1 ether; // msg.value;
+    uint256 providedFee = address(this).balance;
 
     uint32[] memory chains = _chainIds[SafeProxy(payable(msg.sender))];
 
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(75000, 0);
 
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
@@ -287,7 +287,9 @@ contract SyncSafeModule is OApp, HoldsBalance {
     } else {
       // add the origin chain
       uint32[] memory newChains = new uint32[](chains.length + 1);
-      for (uint i = 0; i < chains.length; i++) { newChains[i] = chains[i]; }
+      for (uint256 i = 0; i < chains.length; i++) {
+        newChains[i] = chains[i];
+      }
       newChains[chains.length] = _origin.srcEid;
 
       // here _singletonOrSafeProxy is singleton
@@ -304,7 +306,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     view
     returns (uint256[] memory fees)
   {
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(75000, 0);
     fees = new uint256[](chains.length);
 
     for (uint32 i = 0; i < chains.length; i++) {
