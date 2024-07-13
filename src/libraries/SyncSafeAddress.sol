@@ -27,7 +27,7 @@ library SyncSafeAddress {
   /**
    * @dev Returns the init bytecode for a SafeProxy.
    */
-  function getInitBytecodeHash(SafeProxyFactory self, address _singleton) private pure returns (bytes32 bytecodeHash) {
+  function getInitBytecodeHash(SafeProxyFactory self, address _singleton) internal pure returns (bytes32 bytecodeHash) {
     bytes memory creationCode = self.proxyCreationCode();
     bytecodeHash = keccak256(abi.encodePacked(creationCode, uint256(uint160(_singleton))));
   }

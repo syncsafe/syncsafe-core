@@ -23,6 +23,13 @@ import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/
 using SyncSafeAddress for SafeProxyFactory;
 using OptionsBuilder for bytes;
 
+struct SyncSafeParams {
+  bytes32 initBytecodeHash;
+  SafeCreationParams creationParams;
+}
+
+event SyncSafeCreated(SafeProxy proxyAddress, SyncSafeParams params);
+
 // TODO add ITransactionGuard, IModuleGuard
 contract SyncSafeModule is OApp, HoldsBalance {
   SafeProxyFactory public immutable factory;
@@ -73,7 +80,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     uint256 _threshold,
     uint96 nonce,
     uint32[] memory chains
-  ) internal returns (SafeProxy proxy) {
+  ) internal returns (SafeProxy proxy, bytes32 initializerHash) {
     bytes memory initializer = _getInitializationData(_owners, _threshold);
 
     proxy = factory.createProxyWithNonce(
@@ -83,6 +90,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
     SafeCreationParams memory params =
       SafeCreationParams({initializerHash: keccak256(initializer), _singleton: address(_syncModule), nonce: nonce});
     proxyCreationParams[proxy] = params;
+
+    initializerHash = params.initializerHash;
 
     _setChains(proxy, chains);
   }
@@ -98,8 +107,19 @@ contract SyncSafeModule is OApp, HoldsBalance {
     uint96 nonce,
     uint32[] calldata chains
   ) public payable returns (SafeProxy proxy) {
-    proxy = _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
+    bytes32 initializerHash;
+
+    (proxy, initializerHash) = _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
     _defaultFund();
+
+    emit SyncSafeCreated(
+      proxy,
+      SyncSafeParams({
+        initBytecodeHash: factory.getInitBytecodeHash(_singleton),
+        creationParams: SafeCreationParams({initializerHash: initializerHash, _singleton: _singleton, nonce: nonce})
+      })
+    );
+
     _broadcastToChains(_singleton, _owners, _threshold, nonce, chains);
   }
 
