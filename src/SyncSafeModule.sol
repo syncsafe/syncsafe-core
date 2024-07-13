@@ -25,7 +25,7 @@ using SyncSafeAddress for SafeProxyFactory;
 contract SyncSafeModule is OApp, HoldsBalance {
   SafeProxyFactory public immutable factory;
   SyncSafeModule internal immutable _syncModule;
-  uint32[] internal _chainIds;
+  mapping(SafeProxy proxy => uint32[] chains) internal _chainIds;
 
   mapping(SafeProxy proxy => SafeCreationParams) public proxyCreationParams;
 
@@ -79,11 +79,11 @@ contract SyncSafeModule is OApp, HoldsBalance {
       SafeCreationParams({initializerHash: keccak256(initializer), _singleton: address(_syncModule), nonce: nonce});
     proxyCreationParams[proxy] = params;
 
-    _setChains(chains);
+    _setChains(proxy, chains);
   }
 
-  function _setChains(uint32[] memory chains) internal {
-    _chainIds = chains;
+  function _setChains(SafeProxy proxy, uint32[] memory chains) internal {
+    _chainIds[proxy] = chains;
   }
 
   function initDeployProxy(
@@ -106,8 +106,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
     _fund(msg.sender, msg.value);
   }
 
-  function chainIds() public view returns (uint32[] memory) {
-    return _chainIds;
+  function chainIds(SafeProxy proxy) public view returns (uint32[] memory) {
+    return _chainIds[proxy];
   }
 
   function _removeChainFromList(uint32[] memory chains, uint32 chain) internal pure returns (uint32[] memory newChains) {
