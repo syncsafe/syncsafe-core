@@ -2,20 +2,13 @@
 pragma solidity ^0.8.13;
 
 import {ITransactionGuard} from "../lib/safe/contracts/base/GuardManager.sol";
+import {IModuleGuard} from "../lib/safe/contracts/base/ModuleManager.sol";
 import {Enum} from "../lib/safe/contracts/libraries/Enum.sol";
 import {ISafe} from "../lib/safe/contracts/interfaces/ISafe.sol";
 
-contract SyncSafeModule {
-  bytes4[4] internal guardedMethodSignatures = [
-    bytes4(0x0d582f13), // addOwnerWithThreshold(address owner, uint256 _threshold)
-    bytes4(0xf8dc5dd9), // removeOwner(address prevOwner, address owner, uint256 _threshold)
-    bytes4(0xe318b52b), // swapOwner(address prevOwner, address oldOwner, address newOwner)
-    bytes4(0x694e80c3) // changeThreshold(uint256 _threshold)
-  ];
-
-  bytes4 internal multiSendSelector = 0x8d80ff0a;
-
+contract SyncSafeModule is ITransactionGuard, IModuleGuard {
   mapping(address => address[]) prevOwners;
+  mapping(address => uint256) prevThreshold;
 
   function checkTransaction(
     address to,
@@ -30,17 +23,45 @@ contract SyncSafeModule {
     bytes memory signatures,
     address msgSender
   ) external {
-    prevOwners[msg.sender] = ISafe(msg.sender).getOwners();
+    _saveState();
   }
 
   function checkAfterExecution(bytes32 hash, bool success) external {
-    // check that signers are still the same
+    _checkStateChange(hash, success);
+  }
+
+  function checkModuleTransaction(
+    address to,
+    uint256 value,
+    bytes memory data,
+    Enum.Operation operation,
+    address module
+  ) external returns (bytes32 moduleTxHash) {
+    _saveState();
+  }
+
+  function checkAfterModuleExecution(bytes32 txHash, bool success) external {
+    _checkStateChange(txHash, success);
+  }
+
+  function _saveState() internal {
+    prevOwners[msg.sender] = ISafe(msg.sender).getOwners();
+    prevThreshold[msg.sender] = ISafe(msg.sender).getThreshold();
+  }
+
+  function _checkStateChange(bytes32 hash, bool success) internal {
+    // check if signers are still the same
     if (
       keccak256(abi.encodePacked(ISafe(msg.sender).getOwners())) != keccak256(abi.encodePacked(prevOwners[msg.sender]))
     ) {
       // owners changed
-      // TODO call layer zero...
+      // TODO call layer zero
+    }
+    if (prevThreshold[msg.sender] != ISafe(msg.sender).getThreshold()) {
+      // threshold changed
+      // TODO call layer zero
     }
     delete prevOwners[msg.sender];
+    delete prevThreshold[msg.sender];
   }
 }
