@@ -18,7 +18,7 @@ library SyncSafeAddress {
   /**
    * @dev Returns the current chain id.
    */
-  function getChainId() internal view returns (uint32 id) {
+  function getChainId() private view returns (uint32 id) {
     assembly {
       id := chainid()
     }
@@ -27,7 +27,7 @@ library SyncSafeAddress {
   /**
    * @dev Returns the init bytecode for a SafeProxy.
    */
-  function getInitBytecodeHash(SafeProxyFactory self, address _singleton) internal pure returns (bytes32 bytecodeHash) {
+  function getInitBytecodeHash(SafeProxyFactory self, address _singleton) private pure returns (bytes32 bytecodeHash) {
     bytes memory creationCode = self.proxyCreationCode();
     bytecodeHash = keccak256(abi.encodePacked(creationCode, uint256(uint160(_singleton))));
   }
@@ -35,14 +35,14 @@ library SyncSafeAddress {
   /**
    * @dev Returns the salt for a SafeProxy.
    */
-  function getSalt(SafeCreationParams memory params) internal view returns (bytes32 salt) {
+  function getSalt(SafeCreationParams memory params) private view returns (bytes32 salt) {
     salt = keccak256(abi.encodePacked(params.initializerHash, params.nonce, getChainId()));
   }
 
   /**
    * @dev Returns the address of a SafeProxy.
    */
-  function getAddress(SafeProxyFactory self, SafeCreationParams memory params) public view returns (address addr) {
+  function getAddress(SafeProxyFactory self, SafeCreationParams memory params) internal view returns (address addr) {
     bytes32 salt = getSalt(params);
     bytes32 bytecodeHash = getInitBytecodeHash(self, params._singleton);
     addr = Create2.computeAddress(salt, bytecodeHash, address(self));
@@ -52,7 +52,7 @@ library SyncSafeAddress {
    * @dev Returns the address of a SafeProxy on a different chain.
    */
   function getAddressOnChain(SafeProxyFactory self, SafeCreationParams memory params, uint32 chainId)
-    public
+    internal
     pure
     returns (address addr)
   {
