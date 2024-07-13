@@ -30,6 +30,7 @@ struct SyncSafeParams {
 }
 
 event SyncSafeCreated(SafeProxy proxyAddress, SyncSafeParams params);
+event EmitNewState(address[] owners, uint256 threshold);
 
 // TODO add ITransactionGuard, IModuleGuard
 contract SyncSafeModule is OApp, HoldsBalance {
@@ -244,6 +245,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
       uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
     }
+
+    emit EmitNewState(_owners, _threshold);
   }
 
   // create and broadcast message to lz
