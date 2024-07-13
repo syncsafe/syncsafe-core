@@ -49,6 +49,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
 
   function delegateActivateModule() public {
     Safe(payable(address(this))).enableModule(address(_syncModule));
+    Safe(payable(address(this))).setGuard(address(_syncModule));
   }
 
   function _getSetupData() internal pure returns (bytes memory data) {

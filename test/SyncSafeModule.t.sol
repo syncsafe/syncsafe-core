@@ -33,7 +33,7 @@ contract SyncSafeModuleTest is Test {
   function setUp() public {
     // Fork
     string memory MAINNET_RPC_URL = vm.envString("MAINNET_RPC_URL");
-    uint256 forkId = vm.createFork(MAINNET_RPC_URL);
+    uint256 forkId = vm.createFork(MAINNET_RPC_URL, 20298514);
     vm.selectFork(forkId);
     assertEq(vm.activeFork(), forkId);
 
