@@ -106,6 +106,52 @@ contract SyncSafeModule is OApp, HoldsBalance {
     );
   }
 
+  function updateOwnersBatch(address[] memory newOwners, uint256 threshold) external {
+    address[] memory currentOwners = Safe(payable(this)).getOwners();
+
+    bool hasUpdate;
+
+    for (uint256 i = 0; i < newOwners.length; i++) {
+      for (uint256 j = 0; j < currentOwners.length; j++) {
+        if (newOwners[i] == currentOwners[j]) break;
+        if (j == currentOwners.length - 1) {
+          hasUpdate = true;
+          Safe(payable(this)).addOwnerWithThreshold(newOwners[i], threshold);
+        }
+      }
+    }
+
+    currentOwners = Safe(payable(this)).getOwners();
+
+    uint256 nRemoved;
+    for (uint256 j = 0; j < currentOwners.length; j++) {
+      for (uint256 i = 0; i < newOwners.length; i++) {
+        if (newOwners[i] == currentOwners[j]) {
+          nRemoved = 0;
+          break;
+        }
+
+        if (i == currentOwners.length - 1) {
+          hasUpdate = true;
+          address prevOwner = j - nRemoved == 0 ? address(0x1) : currentOwners[j - nRemoved - 1];
+          Safe(payable(this)).removeOwner(prevOwner, newOwners[i], threshold);
+          nRemoved++;
+        }
+      }
+    }
+
+    if (hasUpdate == false) {
+      Safe(payable(this)).changeThreshold(threshold);
+    }
+  }
+
+  function _updateStateSetup(SafeProxy safeProxy, address[] memory newOwners, uint256 threshold) internal {
+    bytes memory data = abi.encodeWithSelector(this.updateOwnersBatch.selector, newOwners, threshold);
+
+    // TODO check Safe conversion
+    Safe(payable(safeProxy)).execTransactionFromModule(address(this), 0, data, Enum.Operation.DelegateCall);
+  }
+
   function _setChains(SafeProxy proxy, uint32[] memory chains) internal {
     _chainIds[proxy] = chains;
   }
@@ -150,13 +196,13 @@ contract SyncSafeModule is OApp, HoldsBalance {
   }
 
   function _createLzData(
-    address _singleton, // empty if update
+    address _singletonOrSafeProxy, // empty if update
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce, // empty if update
     uint32[] memory newChains // empty if update
   ) internal returns (bytes memory) {
-    bytes memory data = abi.encode(_singleton, _owners, _threshold, nonce, newChains);
+    bytes memory data = abi.encode(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
   }
 
   // broadcast safesync creation
@@ -192,7 +238,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
 
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
-      bytes memory data = _createLzData(address(0), _owners, _threshold, 0, new uint32[](0));
+      address _chainsafeProxy = getAddressOnChain(proxyCreationParams[SafeProxy(payable(msg.sender))], chain);
+      bytes memory data = _createLzData(_chainsafeProxy, _owners, _threshold, 0, new uint32[](0));
       address refundAddress = address(this);
       uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
@@ -231,9 +278,16 @@ contract SyncSafeModule is OApp, HoldsBalance {
     virtual
     override
   {
-    (address _singleton, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains) =
-      abi.decode(_message, (address, address[], uint256, uint96, uint32[]));
-    _initDeployProxy(_singleton, _owners, _threshold, nonce, chains); // TODO add origin chain
+    (address _singletonOrSafeProxy, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains)
+    = abi.decode(_message, (address, address[], uint256, uint96, uint32[]));
+
+    if (chains.length == 0) {
+      // here _singletonOrSafeProxy is safeProxy
+      _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);
+    } else {
+      // here _singletonOrSafeProxy is singleton
+      _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, chains); // TODO add origin chain
+    }
   }
 
   /**
