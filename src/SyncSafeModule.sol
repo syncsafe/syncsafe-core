@@ -160,4 +160,24 @@ contract SyncSafeModule is OApp, HoldsBalance {
       abi.decode(_message, (address, address[], uint256, uint96, uint32[]));
     _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
   }
+
+  /**
+   * @dev Quotes the gas needed to pay for the full omnichain transaction.
+   * @return fees Estimated gas fee in native gas.
+   */
+  function quote(address _singleton, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains)
+    public
+    view
+    returns (uint256[] memory fees)
+  {
+    bytes memory options = _getExecutionOptions(5000000);
+    fees = new uint256[](chains.length);
+
+    for (uint32 i = 0; i < chains.length; i++) {
+      uint32 chain = chains[i];
+      uint32[] memory newChains = _removeChainFromList(chains, chain);
+      bytes memory data = abi.encodePacked(_singleton, _owners, _threshold, nonce, newChains);
+      fees[i] = _quote(chain, data, options, false).nativeFee;
+    }
+  }
 }
