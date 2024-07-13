@@ -10,3 +10,6 @@
 [submodule "lib/layerzero"]
 	path = lib/layerzero
 	url = https://github.com/LayerZero-Labs/LayerZero-v2.git
+[submodule "lib/solidity-bytes-utils"]
+	path = lib/solidity-bytes-utils
+	url = https://github.com/GNSPS/solidity-bytes-utils.git

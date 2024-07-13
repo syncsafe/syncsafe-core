@@ -18,8 +18,10 @@ import {ITransactionGuard} from "../lib/safe/contracts/base/GuardManager.sol";
 import {IModuleGuard} from "../lib/safe/contracts/base/ModuleManager.sol";
 import {Enum} from "../lib/safe/contracts/libraries/Enum.sol";
 import {ISafe} from "../lib/safe/contracts/interfaces/ISafe.sol";
+import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
 
 using SyncSafeAddress for SafeProxyFactory;
+using OptionsBuilder for bytes;
 
 // TODO add ITransactionGuard, IModuleGuard
 contract SyncSafeModule is OApp, HoldsBalance {
@@ -124,10 +126,6 @@ contract SyncSafeModule is OApp, HoldsBalance {
     return newChains;
   }
 
-  function _getExecutionOptions(uint128 _gasLimit) internal pure returns (bytes memory options) {
-    options = abi.encodePacked(uint256(0x00030100110100000000000000000000000000000000) & _gasLimit);
-  }
-
   function _broadcastToChains(
     address _singleton,
     address[] memory _owners,
@@ -136,7 +134,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
     uint32[] memory chains
   ) internal {
     MessagingReceipt memory receipt;
-    bytes memory options = _getExecutionOptions(5000000);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
+
     uint256 providedFee = msg.value;
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
@@ -179,7 +178,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     view
     returns (uint256[] memory fees)
   {
-    bytes memory options = _getExecutionOptions(5000000);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
     fees = new uint256[](chains.length);
 
     for (uint32 i = 0; i < chains.length; i++) {

@@ -28,6 +28,8 @@ contract SyncSafeModuleTest is Test {
 
   SyncSafeModule public _syncModule;
 
+  receive() external payable {}
+
   function setUp() public {
     // Fork
     string memory MAINNET_RPC_URL = vm.envString("MAINNET_RPC_URL");
@@ -36,7 +38,6 @@ contract SyncSafeModuleTest is Test {
     assertEq(vm.activeFork(), forkId);
 
     _syncModule = new SyncSafeModule(safeProxyFactory, lzEndpoint, address(1));
-    console.log(address(_syncModule));
   }
 
   function test_decodeMultiSendExecute() public {
