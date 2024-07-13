@@ -202,8 +202,8 @@ contract SyncSafeModule is OApp, HoldsBalance {
     uint256 _threshold,
     uint96 nonce, // empty if update
     uint32[] memory newChains // empty if update
-  ) internal returns (bytes memory) {
-    bytes memory data = abi.encode(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
+  ) internal pure returns (bytes memory data) {
+    data = abi.encode(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
   }
 
   // broadcast safesync creation
@@ -324,37 +324,34 @@ contract SyncSafeModule is OApp, HoldsBalance {
   mapping(address => uint256) prevThreshold;
 
   function checkTransaction(
-    address to,
-    uint256 value,
-    bytes memory data,
-    Enum.Operation operation,
-    uint256 safeTxGas,
-    uint256 baseGas,
-    uint256 gasPrice,
-    address gasToken,
-    address payable refundReceiver,
-    bytes memory signatures,
-    address msgSender
+    address,
+    uint256,
+    bytes memory,
+    Enum.Operation,
+    uint256,
+    uint256,
+    uint256,
+    address,
+    address payable,
+    bytes memory,
+    address
   ) external {
     _saveState();
   }
 
-  function checkAfterExecution(bytes32 hash, bool success) external {
-    _checkStateChange(hash, success);
+  function checkAfterExecution(bytes32, bool) external {
+    _checkStateChange();
   }
 
-  function checkModuleTransaction(
-    address to,
-    uint256 value,
-    bytes memory data,
-    Enum.Operation operation,
-    address module
-  ) external returns (bytes32 moduleTxHash) {
+  function checkModuleTransaction(address, uint256, bytes memory, Enum.Operation, address)
+    external
+    returns (bytes32 moduleTxHash)
+  {
     _saveState();
   }
 
-  function checkAfterModuleExecution(bytes32 txHash, bool success) external {
-    _checkStateChange(txHash, success);
+  function checkAfterModuleExecution(bytes32, bool) external {
+    _checkStateChange();
   }
 
   function _saveState() internal {
@@ -362,7 +359,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     prevThreshold[msg.sender] = ISafe(msg.sender).getThreshold();
   }
 
-  function _checkStateChange(bytes32 hash, bool success) internal {
+  function _checkStateChange() internal {
     address[] memory newOwners = ISafe(msg.sender).getOwners();
     uint256 newThreshold = ISafe(msg.sender).getThreshold();
 
