@@ -273,7 +273,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     return bytes32(uint256(uint160(address(_syncModule))));
   }
 
-  function _lzReceive(Origin calldata, bytes32, bytes calldata _message, address, bytes calldata)
+  function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
     internal
     virtual
     override
@@ -285,6 +285,11 @@ contract SyncSafeModule is OApp, HoldsBalance {
       // here _singletonOrSafeProxy is safeProxy
       _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);
     } else {
+      // add the origin chain
+      uint32[] memory newChains = new uint32[](chains.length + 1);
+      for (uint i = 0; i < chains.length; i++) { newChains[i] = chains[i]; }
+      newChains[chains.length] = _origin.srcEid;
+
       // here _singletonOrSafeProxy is singleton
       _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, chains); // TODO add origin chain
     }
