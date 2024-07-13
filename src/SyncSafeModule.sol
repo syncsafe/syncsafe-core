@@ -84,7 +84,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     bytes memory initializer = _getInitializationData(_owners, _threshold);
 
     proxy = factory.createProxyWithNonce(
-      _singleton, initializer, uint256(keccak256(abi.encode(nonce, SyncSafeAddress.getChainId())))
+      _singleton, initializer, uint256(keccak256(abi.encodePacked(nonce, SyncSafeAddress.getChainId())))
     );
 
     SafeCreationParams memory params =

@@ -36,7 +36,7 @@ library SyncSafeAddress {
    * @dev Returns the salt for a SafeProxy.
    */
   function getSalt(SafeCreationParams memory params) private view returns (bytes32 salt) {
-    salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encode(params.nonce, getChainId()))));
+    salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encodePacked(params.nonce, getChainId()))));
   }
 
   /**
