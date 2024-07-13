@@ -21,6 +21,7 @@ import {ISafe} from "../lib/safe/contracts/interfaces/ISafe.sol";
 
 using SyncSafeAddress for SafeProxyFactory;
 
+// TODO add ITransactionGuard, IModuleGuard
 contract SyncSafeModule is OApp, HoldsBalance {
   SafeProxyFactory public immutable factory;
   SyncSafeModule internal immutable _syncModule;
@@ -94,6 +95,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
   ) public payable returns (SafeProxy proxy) {
     proxy = _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
     _defaultFund();
+    _broadcastToChains(_singleton, _owners, _threshold, nonce, chains);
   }
 
   function _defaultFund() internal {
