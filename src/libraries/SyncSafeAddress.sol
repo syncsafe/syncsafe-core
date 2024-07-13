@@ -18,7 +18,7 @@ library SyncSafeAddress {
   /**
    * @dev Returns the current chain id.
    */
-  function getChainId() private view returns (uint32 id) {
+  function getChainId() internal view returns (uint32 id) {
     assembly {
       id := chainid()
     }
@@ -36,7 +36,7 @@ library SyncSafeAddress {
    * @dev Returns the salt for a SafeProxy.
    */
   function getSalt(SafeCreationParams memory params) private view returns (bytes32 salt) {
-    salt = keccak256(abi.encodePacked(params.initializerHash, params.nonce, getChainId()));
+    salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encode(params.nonce, getChainId()))));
   }
 
   /**

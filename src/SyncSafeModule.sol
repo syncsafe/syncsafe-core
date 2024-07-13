@@ -73,7 +73,9 @@ contract SyncSafeModule is OApp, HoldsBalance {
   ) internal returns (SafeProxy proxy) {
     bytes memory initializer = _getInitializationData(_owners, _threshold);
 
-    proxy = factory.createChainSpecificProxyWithNonce(_singleton, initializer, nonce);
+    proxy = factory.createProxyWithNonce(
+      _singleton, initializer, uint256(keccak256(abi.encode(nonce, SyncSafeAddress.getChainId())))
+    );
 
     SafeCreationParams memory params =
       SafeCreationParams({initializerHash: keccak256(initializer), _singleton: address(_syncModule), nonce: nonce});
