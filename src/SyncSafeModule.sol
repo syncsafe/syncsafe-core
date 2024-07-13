@@ -25,6 +25,7 @@ using OptionsBuilder for bytes;
 
 struct SyncSafeParams {
   bytes32 initBytecodeHash;
+  uint32[] chainIds;
   SafeCreationParams creationParams;
 }
 
@@ -94,6 +95,15 @@ contract SyncSafeModule is OApp, HoldsBalance {
     initializerHash = params.initializerHash;
 
     _setChains(proxy, chains);
+
+    emit SyncSafeCreated(
+      proxy,
+      SyncSafeParams({
+        initBytecodeHash: factory.getInitBytecodeHash(_singleton),
+        chainIds: chains,
+        creationParams: SafeCreationParams({initializerHash: initializerHash, _singleton: _singleton, nonce: nonce})
+      })
+    );
   }
 
   function _setChains(SafeProxy proxy, uint32[] memory chains) internal {
@@ -112,15 +122,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     (proxy, initializerHash) = _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
     _defaultFund();
 
-    emit SyncSafeCreated(
-      proxy,
-      SyncSafeParams({
-        initBytecodeHash: factory.getInitBytecodeHash(_singleton),
-        creationParams: SafeCreationParams({initializerHash: initializerHash, _singleton: _singleton, nonce: nonce})
-      })
-    );
-
-    _broadcastToChains(_singleton, _owners, _threshold, nonce, chains);
+    _broadcastCreationToChains(_singleton, _owners, _threshold, nonce, chains);
   }
 
   function _defaultFund() internal {
@@ -147,32 +149,76 @@ contract SyncSafeModule is OApp, HoldsBalance {
     return newChains;
   }
 
-  function _broadcastToChains(
+  function _createLzData(
+    address _singleton, // empty if update
+    address[] memory _owners,
+    uint256 _threshold,
+    uint96 nonce, // empty if update
+    uint32[] memory newChains // empty if update
+  ) internal returns (bytes memory) {
+    bytes memory data = abi.encode(_singleton, _owners, _threshold, nonce, newChains);
+  }
+
+  // broadcast safesync creation
+  function _broadcastCreationToChains(
     address _singleton,
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce,
     uint32[] memory chains
   ) internal {
-    MessagingReceipt memory receipt;
+    uint256 providedFee = msg.value;
+
     bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
 
-    uint256 providedFee = msg.value;
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
       uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = abi.encodePacked(_singleton, _owners, _threshold, nonce, newChains);
+      bytes memory data = _createLzData(_singleton, _owners, _threshold, nonce, newChains);
       address refundAddress = i == chains.length - 1 ? msg.sender : address(this);
-      receipt = _lzSend(chain, data, options, MessagingFee({nativeFee: providedFee, lzTokenFee: 0}), refundAddress);
-      providedFee -= receipt.fee.nativeFee;
+      uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
+      providedFee -= nativeFee;
     }
+  }
+
+  // broadcast safesync update
+  function _broadcastNewStateToChains(address[] memory _owners, uint256 _threshold) internal {
+    // TODO add a way to use user's safe funds to sponsor the transaction
+    uint256 providedFee = 1 ether; // msg.value;
+
+    uint32[] memory chains = _chainIds[SafeProxy(payable(msg.sender))];
+
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(65000, 0);
+
+    for (uint32 i = 0; i < chains.length; i++) {
+      uint32 chain = chains[i];
+      bytes memory data = _createLzData(address(0), _owners, _threshold, 0, new uint32[](0));
+      address refundAddress = address(this);
+      uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
+      providedFee -= nativeFee;
+    }
+  }
+
+  // create and broadcast message to lz
+  function _broadcastToChains(
+    uint32 chain,
+    bytes memory data,
+    bytes memory options,
+    address refundAddress,
+    uint256 providedFee
+  ) internal returns (uint256 nativeFee) {
+    MessagingReceipt memory receipt =
+      _lzSend(chain, data, options, MessagingFee({nativeFee: providedFee, lzTokenFee: 0}), refundAddress);
+
+    nativeFee = receipt.fee.nativeFee;
   }
 
   /**
    *  @dev Batch send requires overriding this function from OAppSender because the msg.value contains multiple fees
    */
   function _payNative(uint256 _nativeFee) internal virtual override returns (uint256 nativeFee) {
-    if (msg.value < _nativeFee) revert NotEnoughNative(msg.value);
+    // TODO modify address(this).balance to reflect the user's balance
+    if (msg.value + address(this).balance < _nativeFee) revert NotEnoughNative(msg.value);
     return _nativeFee;
   }
 
@@ -187,7 +233,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
   {
     (address _singleton, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains) =
       abi.decode(_message, (address, address[], uint256, uint96, uint32[]));
-    _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
+    _initDeployProxy(_singleton, _owners, _threshold, nonce, chains); // TODO add origin chain
   }
 
   /**
@@ -205,7 +251,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
       uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = abi.encodePacked(_singleton, _owners, _threshold, nonce, newChains);
+      bytes memory data = abi.encode(_singleton, _owners, _threshold, nonce, newChains);
       fees[i] = _quote(chain, data, options, false).nativeFee;
     }
   }
@@ -253,17 +299,18 @@ contract SyncSafeModule is OApp, HoldsBalance {
   }
 
   function _checkStateChange(bytes32 hash, bool success) internal {
+    address[] memory newOwners = ISafe(msg.sender).getOwners();
+    uint256 newThreshold = ISafe(msg.sender).getThreshold();
+
     // check if signers are still the same
     if (
-      keccak256(abi.encodePacked(ISafe(msg.sender).getOwners())) != keccak256(abi.encodePacked(prevOwners[msg.sender]))
+      keccak256(abi.encodePacked(newOwners)) != keccak256(abi.encodePacked(prevOwners[msg.sender]))
+        || newThreshold != prevThreshold[msg.sender]
     ) {
-      // owners changed
-      // TODO call layer zero
+      // owners or threshold changed, call lz
+      _broadcastNewStateToChains(newOwners, newThreshold);
     }
-    if (prevThreshold[msg.sender] != ISafe(msg.sender).getThreshold()) {
-      // threshold changed
-      // TODO call layer zero
-    }
+
     delete prevOwners[msg.sender];
     delete prevThreshold[msg.sender];
   }
