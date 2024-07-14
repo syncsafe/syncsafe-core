@@ -209,7 +209,7 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   ) internal {
     uint256 providedFee = msg.value;
 
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(1_000_000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(500_000, 0);
 
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
@@ -296,7 +296,7 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
       newChains[chains.length] = _origin.srcEid;
 
       // here _singletonOrSafeProxy is singleton
-      _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, chains); // TODO add origin chain
+      _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains); // TODO add origin chain
     } else {
       // here _singletonOrSafeProxy is safeProxy
       _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);

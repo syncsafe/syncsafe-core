@@ -13,7 +13,7 @@ contract SafeDeployer is Script {
   address sender = 0x55aFE7FDbB76B478d83e2151B468f7C74442B46C;
 
   function setUp() public {
-    module = SyncSafeModule(payable(0x96329a7f7c543c6973Ff83C9c2B61ca7250989b6));
+    module = SyncSafeModule(payable(0x281973cB6579afc99f6143da827B101281C7c29F)); // modify here
   }
 
   function run() public {
