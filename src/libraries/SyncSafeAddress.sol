@@ -26,7 +26,7 @@ library SyncSafeAddress {
   /**
    * @dev Returns the salt for a SafeProxy.
    */
-  function getSalt(SafeCreationParams memory params, uint32 eid) private view returns (bytes32 salt) {
+  function getSalt(SafeCreationParams memory params, uint32 eid) private pure returns (bytes32 salt) {
     salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encodePacked(params.nonce, eid))));
   }
 
@@ -35,7 +35,7 @@ library SyncSafeAddress {
    */
   function getAddress(SafeProxyFactory self, SafeCreationParams memory params, uint32 eid)
     internal
-    view
+    pure
     returns (address addr)
   {
     bytes32 salt = getSalt(params, eid);
@@ -51,7 +51,7 @@ library SyncSafeAddress {
     pure
     returns (address addr)
   {
-    bytes32 salt = keccak256(abi.encodePacked(params.initializerHash, params.nonce, eid));
+    bytes32 salt = getSalt(params, eid);
     bytes32 bytecodeHash = keccak256(abi.encodePacked(self.proxyCreationCode(), uint256(uint160(params._singleton))));
     addr = Create2.computeAddress(salt, bytecodeHash, address(self));
   }
