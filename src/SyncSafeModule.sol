@@ -269,6 +269,10 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     return bytes32(uint256(uint160(address(_syncModule))));
   }
 
+  function allowInitializePath(Origin calldata origin) public view virtual override returns (bool) {
+    return _getPeerOrRevert(origin.srcEid) == origin.sender;
+  }
+
   function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
     internal
     virtual
