@@ -19,3 +19,5 @@ docs/
 deploy.sh
 
 broadcast/
+
+.DS_Store

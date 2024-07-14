@@ -1,66 +1,66 @@
-## Foundry
+## SyncSafe - A Minimal Implementation of a Cross-Chain State-Drifting Resistant Safe with Layer Zero
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+![SyncSafe Illustration](./images/safesync_1.png)
 
-Foundry consists of:
+## Abstract
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+In this repository, we introduce a minimal approach to creating a multi-signature (multisig) safe module and guard, designed to operate seamlessly across multiple blockchain networks. Leveraging Layer Zero technology, our system ensures deterministic address generation given a chain ID and maintains synchronized states (signers and threshold) across all supported chains. This implementation aims to minimize complexity while providing robust security against state drift, thereby enhancing the reliability and usability of multisig safes in a cross-chain environment.
 
-## Documentation
+## Problem
 
-https://book.getfoundry.sh/
+The past months have seen a rapid growth in the number of chains used by DeFi users. In this setting, large organizations who operate Gnosis Safe smart wallets regularly need to synchronise their governance across multiple chains.
 
-## Usage
+This process is time consuming as it requires multiple signers to update dozens of safes to synchronise their setup.
 
-### Build
+## Solution
 
-```shell
-$ forge build
-```
+SafeSync is a Gnosis Safe module which automaticly synchronises the state of a safe across chains.
 
-### Test
+The first step is to deploy your first SafeSync. For this, choose the chains where you wish to deploy a safe, the more the better.
 
-```shell
-$ forge test
-```
+![](./images/safesync_3.png)
 
-### Format
+Then you will witness the automatic deployment of each safe on each network. These safe are part of an integrated network of safes which we call a SyncSafe.
 
-```shell
-$ forge fmt
-```
+![](./images/safesync_4.png)
 
-### Gas Snapshots
+**🔥 From now on**, you don't need to worry about replicating governance updates on each chain. Any governance update of your safe will be replicated across your whole SyncSafe.
 
-```shell
-$ forge snapshot
-```
+You are now future proof and ready to embark safely in a multichain world.
 
-### Anvil
+## Technical Diagram
 
-```shell
-$ anvil
-```
+![](./images/syncsafe_arch_1.png)
 
-### Deploy
+> 1. Initialization of the SafeSync creation
 
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
+![](./images/syncsafe_arch_2.png)
 
-### Cast
+> 2. Synchronisation of the SafeSync creation across chains
 
-```shell
-$ cast <subcommand>
-```
+![](./images/syncsafe_arch_3.png)
 
-### Help
+> 3. Catching the governance update of a Safe
 
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+![](./images/syncsafe_arch_4.png)
+
+> 4. Synchronisation of the SafeSync governance update across chains
+
+##
+
+## Contributing
+
+If you're interested in contributing, please open an issue in this repository
+
+## Authors
+
+Started at [ETH Global Brussels 2024](https://ethglobal.com/events/brussels) by:
+
+- [@mathisrgt](github.com/mathisrgt) (mathisrgt.eth, [Telegram](t.me/mathisrgt))
+- [@maxencerb](github.com/maxencerb) (maxencerb.eth, [Twitter](x.com/_maxencerb))
+- [@pybast](github.com/Pybast) (pybast.eth, [pybasteth](x.com/pybasteth))
+- [@raouf2ouf](github.com/raouf2ouf) ([Twitter](x.com/raouf2ouf))
+
+## License
+
+[MIT](https://github.com/wevm/viem/blob/main/LICENSE) License
