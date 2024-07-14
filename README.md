@@ -49,7 +49,8 @@ You are now future proof and ready to embark safely in a multichain world.
 ## Deployments
 
 - Arbitrum [0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9](https://arbiscan.io/address/0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9)
-- Basescan [0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9](https://basescan.org/address/0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9)s
+- Basescan [0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9](https://basescan.org/address/0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9)
+- Linea [0x8991690990ea0a47b41c67c7fa82d717387eacd9](https://lineascan.build/address/0x8991690990ea0a47b41c67c7fa82d717387eacd9)
 
 ## Contributing
 
