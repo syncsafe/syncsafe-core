@@ -238,8 +238,8 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
       uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
     }
-
-    emit EmitNewState(_owners, _threshold);
+    address topLevelAddress = getAddressOnChain(proxyCreationParams[SafeProxy(payable(msg.sender))], 0);
+    emit EmitNewState(topLevelAddress, _owners, _threshold);
   }
 
   // create and broadcast message to lz

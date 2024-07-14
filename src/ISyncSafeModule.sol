@@ -13,5 +13,5 @@ interface ISyncSafeModule {
 
   event SyncSafeCreated(SafeProxy proxyAddress, SyncSafeParams params);
 
-  event EmitNewState(address[] owners, uint256 threshold);
+  event EmitNewState(address topLevel, address[] owners, uint256 threshold);
 }
