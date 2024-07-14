@@ -209,7 +209,7 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   ) internal {
     uint256 providedFee = msg.value;
 
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(500000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(1_000_000, 0);
 
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
@@ -373,5 +373,9 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
 
     delete prevOwners[msg.sender];
     delete prevThreshold[msg.sender];
+  }
+
+  function declarePeer(uint32 eid) external onlyOwner {
+    emit PeerSet(eid, bytes32(uint256(uint160(address(this)))));
   }
 }

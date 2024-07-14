@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
 import {SafeProxy} from "@safe/contracts/proxies/SafeProxy.sol";
 import {SafeCreationParams} from "./libraries/SyncSafeAddress.sol";
 
