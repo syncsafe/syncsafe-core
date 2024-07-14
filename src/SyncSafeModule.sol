@@ -19,21 +19,13 @@ import {IModuleGuard} from "../lib/safe/contracts/base/ModuleManager.sol";
 import {Enum} from "../lib/safe/contracts/libraries/Enum.sol";
 import {ISafe} from "../lib/safe/contracts/interfaces/ISafe.sol";
 import {OptionsBuilder} from "@layerzerolabs/lz-evm-oapp-v2/contracts/oapp/libs/OptionsBuilder.sol";
+import {ISyncSafeModule} from "./ISyncSafeModule.sol";
 
 using SyncSafeAddress for SafeProxyFactory;
 using OptionsBuilder for bytes;
 
-struct SyncSafeParams {
-  bytes32 initBytecodeHash;
-  uint32[] chainIds;
-  SafeCreationParams creationParams;
-}
-
-event SyncSafeCreated(SafeProxy proxyAddress, SyncSafeParams params);
-event EmitNewState(address[] owners, uint256 threshold);
-
 // TODO add ITransactionGuard, IModuleGuard
-contract SyncSafeModule is OApp, HoldsBalance {
+contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   SafeProxyFactory public immutable factory;
   SyncSafeModule internal immutable _syncModule;
   mapping(SafeProxy proxy => uint32[] chains) internal _chainIds;
@@ -197,13 +189,14 @@ contract SyncSafeModule is OApp, HoldsBalance {
   }
 
   function _createLzData(
+    bool isCreate,
     address _singletonOrSafeProxy, // empty if update
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce, // empty if update
     uint32[] memory newChains // empty if update
   ) internal pure returns (bytes memory data) {
-    data = abi.encode(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
+    data = abi.encode(isCreate, _singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
   }
 
   // broadcast safesync creation
@@ -221,7 +214,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
       uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = _createLzData(_singleton, _owners, _threshold, nonce, newChains);
+      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newChains);
       address refundAddress = i == chains.length - 1 ? msg.sender : address(this);
       uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
@@ -240,7 +233,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
       address _chainsafeProxy = getAddressOnChain(proxyCreationParams[SafeProxy(payable(msg.sender))], chain);
-      bytes memory data = _createLzData(_chainsafeProxy, _owners, _threshold, 0, new uint32[](0));
+      bytes memory data = _createLzData(false, _chainsafeProxy, _owners, _threshold, 0, new uint32[](0));
       address refundAddress = address(this);
       uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
@@ -281,13 +274,16 @@ contract SyncSafeModule is OApp, HoldsBalance {
     virtual
     override
   {
-    (address _singletonOrSafeProxy, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains)
-    = abi.decode(_message, (address, address[], uint256, uint96, uint32[]));
+    (
+      bool isCreate,
+      address _singletonOrSafeProxy,
+      address[] memory _owners,
+      uint256 _threshold,
+      uint96 nonce,
+      uint32[] memory chains
+    ) = abi.decode(_message, (bool, address, address[], uint256, uint96, uint32[]));
 
-    if (chains.length == 0) {
-      // here _singletonOrSafeProxy is safeProxy
-      _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);
-    } else {
+    if (isCreate == true) {
       // add the origin chain
       uint32[] memory newChains = new uint32[](chains.length + 1);
       for (uint256 i = 0; i < chains.length; i++) {
@@ -297,6 +293,9 @@ contract SyncSafeModule is OApp, HoldsBalance {
 
       // here _singletonOrSafeProxy is singleton
       _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, chains); // TODO add origin chain
+    } else {
+      // here _singletonOrSafeProxy is safeProxy
+      _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);
     }
   }
 
@@ -315,7 +314,7 @@ contract SyncSafeModule is OApp, HoldsBalance {
     for (uint32 i = 0; i < chains.length; i++) {
       uint32 chain = chains[i];
       uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = abi.encode(_singleton, _owners, _threshold, nonce, newChains);
+      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newChains);
       fees[i] = _quote(chain, data, options, false).nativeFee;
     }
   }

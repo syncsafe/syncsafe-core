@@ -55,13 +55,10 @@ contract CreationStatePropagationTest is Test {
       Origin({srcEid: uint32(30102), sender: bytes32(uint256(uint160(address(_syncModule)))), nonce: uint64(5999)});
     bytes32 _guid = bytes32(0x1082fdce640a720b13b35c6b9b33fe05a93ef911cc8771d490511c3022b596a2);
 
-    bytes memory data = abi.encode(address(singleton), _owners, uint256(1), uint96(1), chains);
+    bytes memory data = abi.encode(true, address(singleton), _owners, uint256(1), uint96(1), chains);
 
     address _executor = address(0x0);
     bytes memory _extradata = "";
-
-    (address singleton2, address[] memory owners2, uint256 threshold2, uint96 nonce2, uint32[] memory chains2) =
-      abi.decode(data, (address, address[], uint256, uint96, uint32[]));
 
     vm.startPrank(lzEndpoint);
     _syncModule.lzReceive(origin, _guid, data, _executor, _extradata);
@@ -116,7 +113,7 @@ contract StateUpdatePropagationTest is Test {
       Origin({srcEid: uint32(30102), sender: bytes32(uint256(uint160(address(_syncModule)))), nonce: uint64(5999)});
     bytes32 _guid = bytes32(0x1082fdce640a720b13b35c6b9b33fe05a93ef911cc8771d490511c3022b596a2);
 
-    bytes memory data = abi.encode(address(proxy), _owners, uint256(1), uint96(0), new bytes32[](0));
+    bytes memory data = abi.encode(false, address(proxy), _owners, uint256(1), uint96(0), new bytes32[](0));
 
     address _executor = address(0x0);
     bytes memory _extradata = "";
@@ -140,7 +137,7 @@ contract StateUpdatePropagationTest is Test {
       Origin({srcEid: uint32(30102), sender: bytes32(uint256(uint160(address(_syncModule)))), nonce: uint64(5999)});
     bytes32 _guid = bytes32(0x1082fdce640a720b13b35c6b9b33fe05a93ef911cc8771d490511c3022b596a2);
 
-    bytes memory data = abi.encode(address(proxy), _owners, uint256(1), uint96(0), new bytes32[](0));
+    bytes memory data = abi.encode(false, address(proxy), _owners, uint256(1), uint96(0), new bytes32[](0));
 
     address _executor = address(0x0);
     bytes memory _extradata = "";
@@ -148,7 +145,7 @@ contract StateUpdatePropagationTest is Test {
     vm.startPrank(lzEndpoint);
     _syncModule.lzReceive(origin, _guid, data, _executor, _extradata);
 
-    data = abi.encode(address(proxy), _owners, uint256(2), uint96(0), new bytes32[](0));
+    data = abi.encode(false, address(proxy), _owners, uint256(2), uint96(0), new bytes32[](0));
 
     _syncModule.lzReceive(origin, _guid, data, _executor, _extradata);
 
