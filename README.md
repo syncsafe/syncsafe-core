@@ -46,7 +46,10 @@ You are now future proof and ready to embark safely in a multichain world.
 
 > 4. Synchronisation of the SafeSync governance update across chains
 
-##
+## Deployments
+
+- Arbitrum [0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9](https://arbiscan.io/address/0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9)
+- Basescan [0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9](https://basescan.org/address/0x8991690990Ea0A47B41c67c7Fa82d717387eAcD9)s
 
 ## Contributing
 
