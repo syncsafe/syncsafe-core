@@ -7,7 +7,7 @@ import {SafeCreationParams} from "./libraries/SyncSafeAddress.sol";
 interface ISyncSafeModule {
   struct SyncSafeParams {
     bytes32 initBytecodeHash;
-    uint32[] chainIds;
+    uint32[] eids;
     SafeCreationParams creationParams;
   }
 

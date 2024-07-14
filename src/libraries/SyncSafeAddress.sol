@@ -16,15 +16,6 @@ struct SafeCreationParams {
  */
 library SyncSafeAddress {
   /**
-   * @dev Returns the current chain id.
-   */
-  function getChainId() internal view returns (uint32 id) {
-    assembly {
-      id := chainid()
-    }
-  }
-
-  /**
    * @dev Returns the init bytecode for a SafeProxy.
    */
   function getInitBytecodeHash(SafeProxyFactory self, address _singleton) internal pure returns (bytes32 bytecodeHash) {
@@ -35,28 +26,32 @@ library SyncSafeAddress {
   /**
    * @dev Returns the salt for a SafeProxy.
    */
-  function getSalt(SafeCreationParams memory params) private view returns (bytes32 salt) {
-    salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encodePacked(params.nonce, getChainId()))));
+  function getSalt(SafeCreationParams memory params, uint32 eid) private view returns (bytes32 salt) {
+    salt = keccak256(abi.encodePacked(params.initializerHash, keccak256(abi.encodePacked(params.nonce, eid))));
   }
 
   /**
    * @dev Returns the address of a SafeProxy.
    */
-  function getAddress(SafeProxyFactory self, SafeCreationParams memory params) internal view returns (address addr) {
-    bytes32 salt = getSalt(params);
+  function getAddress(SafeProxyFactory self, SafeCreationParams memory params, uint32 eid)
+    internal
+    view
+    returns (address addr)
+  {
+    bytes32 salt = getSalt(params, eid);
     bytes32 bytecodeHash = getInitBytecodeHash(self, params._singleton);
     addr = Create2.computeAddress(salt, bytecodeHash, address(self));
   }
 
   /**
-   * @dev Returns the address of a SafeProxy on a different chain.
+   * @dev Returns the address of a SafeProxy on a different eid.
    */
-  function getAddressOnChain(SafeProxyFactory self, SafeCreationParams memory params, uint32 chainId)
+  function getAddressOnEid(SafeProxyFactory self, SafeCreationParams memory params, uint32 eid)
     internal
     pure
     returns (address addr)
   {
-    bytes32 salt = keccak256(abi.encodePacked(params.initializerHash, params.nonce, chainId));
+    bytes32 salt = keccak256(abi.encodePacked(params.initializerHash, params.nonce, eid));
     bytes32 bytecodeHash = keccak256(abi.encodePacked(self.proxyCreationCode(), uint256(uint160(params._singleton))));
     addr = Create2.computeAddress(salt, bytecodeHash, address(self));
   }

@@ -13,18 +13,18 @@ contract SafeDeployer is Script {
   address sender = 0x55aFE7FDbB76B478d83e2151B468f7C74442B46C;
 
   function setUp() public {
-    module = SyncSafeModule(payable(0x281973cB6579afc99f6143da827B101281C7c29F)); // modify here
+    module = SyncSafeModule(payable(0xCDF079Fda42849d5d78866DB0966E24eC0d0637E)); // modify here
   }
 
   function run() public {
     address[] memory _owners = new address[](1);
     _owners[0] = sender;
 
-    uint32[] memory chains = new uint32[](1);
-    chains[0] = uint32(40161);
-    // chains[1] = uint32(40245);
+    uint32[] memory eids = new uint32[](1);
+    eids[0] = uint32(40161);
+    // eids[1] = uint32(40245);
 
     vm.broadcast();
-    module.initDeployProxy{value: 0.01 ether}(address(singleton), _owners, 1, 123812086, chains);
+    module.initDeployProxy{value: 0.01 ether}(address(singleton), _owners, 1, 123812086, eids);
   }
 }

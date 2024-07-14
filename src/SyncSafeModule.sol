@@ -28,7 +28,7 @@ using OptionsBuilder for bytes;
 contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   SafeProxyFactory public immutable factory;
   SyncSafeModule internal immutable _syncModule;
-  mapping(SafeProxy proxy => uint32[] chains) internal _chainIds;
+  mapping(SafeProxy proxy => uint32[] eids) internal _eids;
 
   mapping(SafeProxy proxy => SafeCreationParams) public proxyCreationParams;
 
@@ -41,11 +41,11 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   }
 
   function getAddress(SafeCreationParams memory params) public view returns (address addr) {
-    addr = factory.getAddress(params);
+    addr = factory.getAddress(params, endpoint.eid());
   }
 
-  function getAddressOnChain(SafeCreationParams memory params, uint32 chainId) public view returns (address addr) {
-    addr = factory.getAddressOnChain(params, chainId);
+  function getAddressOnEid(SafeCreationParams memory params, uint32 eid) public view returns (address addr) {
+    addr = factory.getAddressOnEid(params, eid);
   }
 
   function delegateActivateModule() public {
@@ -73,13 +73,12 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce,
-    uint32[] memory chains
+    uint32[] memory eids
   ) internal returns (SafeProxy proxy, bytes32 initializerHash) {
     bytes memory initializer = _getInitializationData(_owners, _threshold);
 
-    proxy = factory.createProxyWithNonce(
-      _singleton, initializer, uint256(keccak256(abi.encodePacked(nonce, SyncSafeAddress.getChainId())))
-    );
+    proxy =
+      factory.createProxyWithNonce(_singleton, initializer, uint256(keccak256(abi.encodePacked(nonce, endpoint.eid()))));
 
     SafeCreationParams memory params =
       SafeCreationParams({initializerHash: keccak256(initializer), _singleton: address(_syncModule), nonce: nonce});
@@ -87,13 +86,13 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
 
     initializerHash = params.initializerHash;
 
-    _setChains(proxy, chains);
+    _setEids(proxy, eids);
 
     emit SyncSafeCreated(
       proxy,
       SyncSafeParams({
         initBytecodeHash: factory.getInitBytecodeHash(_singleton),
-        chainIds: chains,
+        eids: eids,
         creationParams: SafeCreationParams({initializerHash: initializerHash, _singleton: _singleton, nonce: nonce})
       })
     );
@@ -145,8 +144,8 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     Safe(payable(safeProxy)).execTransactionFromModule(address(this), 0, data, Enum.Operation.DelegateCall);
   }
 
-  function _setChains(SafeProxy proxy, uint32[] memory chains) internal {
-    _chainIds[proxy] = chains;
+  function _setEids(SafeProxy proxy, uint32[] memory eids) internal {
+    _eids[proxy] = eids;
   }
 
   function initDeployProxy(
@@ -154,14 +153,14 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     address[] calldata _owners,
     uint256 _threshold,
     uint96 nonce,
-    uint32[] calldata chains
+    uint32[] calldata eids
   ) public payable returns (SafeProxy proxy) {
     bytes32 initializerHash;
 
-    (proxy, initializerHash) = _initDeployProxy(_singleton, _owners, _threshold, nonce, chains);
+    (proxy, initializerHash) = _initDeployProxy(_singleton, _owners, _threshold, nonce, eids);
     _defaultFund();
 
-    _broadcastCreationToChains(_singleton, _owners, _threshold, nonce, chains);
+    _broadcastCreationToEids(_singleton, _owners, _threshold, nonce, eids);
   }
 
   function _defaultFund() internal {
@@ -172,20 +171,20 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     _fund(msg.sender, msg.value);
   }
 
-  function chainIds(SafeProxy proxy) public view returns (uint32[] memory) {
-    return _chainIds[proxy];
+  function eids(SafeProxy proxy) public view returns (uint32[] memory) {
+    return _eids[proxy];
   }
 
-  function _removeChainFromList(uint32[] memory chains, uint32 chain) internal pure returns (uint32[] memory newChains) {
-    newChains = new uint32[](chains.length - 1);
+  function _removeEidFromList(uint32[] memory eids, uint32 eid) internal pure returns (uint32[] memory newEids) {
+    newEids = new uint32[](eids.length - 1);
     uint32 j = 0;
-    for (uint32 i = 0; i < chains.length; i++) {
-      if (chains[i] != chain) {
-        newChains[j] = chains[i];
+    for (uint32 i = 0; i < eids.length; i++) {
+      if (eids[i] != eid) {
+        newEids[j] = eids[i];
         j++;
       }
     }
-    return newChains;
+    return newEids;
   }
 
   function _createLzData(
@@ -194,64 +193,64 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce, // empty if update
-    uint32[] memory newChains // empty if update
+    uint32[] memory newEids // empty if update
   ) internal pure returns (bytes memory data) {
-    data = abi.encode(isCreate, _singletonOrSafeProxy, _owners, _threshold, nonce, newChains);
+    data = abi.encode(isCreate, _singletonOrSafeProxy, _owners, _threshold, nonce, newEids);
   }
 
   // broadcast safesync creation
-  function _broadcastCreationToChains(
+  function _broadcastCreationToEids(
     address _singleton,
     address[] memory _owners,
     uint256 _threshold,
     uint96 nonce,
-    uint32[] memory chains
+    uint32[] memory eids
   ) internal {
     uint256 providedFee = msg.value;
 
     bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(500_000, 0);
 
-    for (uint32 i = 0; i < chains.length; i++) {
-      uint32 chain = chains[i];
-      uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newChains);
-      address refundAddress = i == chains.length - 1 ? msg.sender : address(this);
-      uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
+    for (uint32 i = 0; i < eids.length; i++) {
+      uint32 eid = eids[i];
+      uint32[] memory newEids = _removeEidFromList(eids, eid);
+      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newEids);
+      address refundAddress = i == eids.length - 1 ? msg.sender : address(this);
+      uint256 nativeFee = _broadcastToEids(eid, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
     }
   }
 
   // broadcast safesync update
-  function _broadcastNewStateToChains(address[] memory _owners, uint256 _threshold) internal {
+  function _broadcastNewStateToEids(address[] memory _owners, uint256 _threshold) internal {
     // TODO add a way to use user's safe funds to sponsor the transaction
     uint256 providedFee = address(this).balance;
 
-    uint32[] memory chains = _chainIds[SafeProxy(payable(msg.sender))];
+    uint32[] memory eids = _eids[SafeProxy(payable(msg.sender))];
 
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(75000, 0);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150_000, 0);
 
-    for (uint32 i = 0; i < chains.length; i++) {
-      uint32 chain = chains[i];
-      address _chainsafeProxy = getAddressOnChain(proxyCreationParams[SafeProxy(payable(msg.sender))], chain);
-      bytes memory data = _createLzData(false, _chainsafeProxy, _owners, _threshold, 0, new uint32[](0));
+    for (uint32 i = 0; i < eids.length; i++) {
+      uint32 eid = eids[i];
+      address _eidSafeProxy = getAddressOnEid(proxyCreationParams[SafeProxy(payable(msg.sender))], eid);
+      bytes memory data = _createLzData(false, _eidSafeProxy, _owners, _threshold, 0, new uint32[](0));
       address refundAddress = address(this);
-      uint256 nativeFee = _broadcastToChains(chain, data, options, refundAddress, providedFee);
+      uint256 nativeFee = _broadcastToEids(eid, data, options, refundAddress, providedFee);
       providedFee -= nativeFee;
     }
-    address topLevelAddress = getAddressOnChain(proxyCreationParams[SafeProxy(payable(msg.sender))], 0);
+    address topLevelAddress = getAddressOnEid(proxyCreationParams[SafeProxy(payable(msg.sender))], 0);
     emit EmitNewState(topLevelAddress, _owners, _threshold);
   }
 
   // create and broadcast message to lz
-  function _broadcastToChains(
-    uint32 chain,
+  function _broadcastToEids(
+    uint32 eid,
     bytes memory data,
     bytes memory options,
     address refundAddress,
     uint256 providedFee
   ) internal returns (uint256 nativeFee) {
     MessagingReceipt memory receipt =
-      _lzSend(chain, data, options, MessagingFee({nativeFee: providedFee, lzTokenFee: 0}), refundAddress);
+      _lzSend(eid, data, options, MessagingFee({nativeFee: providedFee, lzTokenFee: 0}), refundAddress);
 
     nativeFee = receipt.fee.nativeFee;
   }
@@ -284,19 +283,19 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
       address[] memory _owners,
       uint256 _threshold,
       uint96 nonce,
-      uint32[] memory chains
+      uint32[] memory eids
     ) = abi.decode(_message, (bool, address, address[], uint256, uint96, uint32[]));
 
     if (isCreate == true) {
-      // add the origin chain
-      uint32[] memory newChains = new uint32[](chains.length + 1);
-      for (uint256 i = 0; i < chains.length; i++) {
-        newChains[i] = chains[i];
+      // add the origin eid
+      uint32[] memory newEids = new uint32[](eids.length + 1);
+      for (uint256 i = 0; i < eids.length; i++) {
+        newEids[i] = eids[i];
       }
-      newChains[chains.length] = _origin.srcEid;
+      newEids[eids.length] = _origin.srcEid;
 
       // here _singletonOrSafeProxy is singleton
-      _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, newChains); // TODO add origin chain
+      _initDeployProxy(_singletonOrSafeProxy, _owners, _threshold, nonce, newEids); // TODO add origin eid
     } else {
       // here _singletonOrSafeProxy is safeProxy
       _updateStateSetup(SafeProxy(payable(_singletonOrSafeProxy)), _owners, _threshold);
@@ -304,22 +303,22 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
   }
 
   /**
-   * @dev Quotes the gas needed to pay for the full omnichain transaction.
+   * @dev Quotes the gas needed to pay for the full omniEid transaction.
    * @return fees Estimated gas fee in native gas.
    */
-  function quote(address _singleton, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory chains)
+  function quote(address _singleton, address[] memory _owners, uint256 _threshold, uint96 nonce, uint32[] memory eids)
     public
     view
     returns (uint256[] memory fees)
   {
-    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(75000, 0);
-    fees = new uint256[](chains.length);
+    bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(150_000, 0);
+    fees = new uint256[](eids.length);
 
-    for (uint32 i = 0; i < chains.length; i++) {
-      uint32 chain = chains[i];
-      uint32[] memory newChains = _removeChainFromList(chains, chain);
-      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newChains);
-      fees[i] = _quote(chain, data, options, false).nativeFee;
+    for (uint32 i = 0; i < eids.length; i++) {
+      uint32 eid = eids[i];
+      uint32[] memory newEids = _removeEidFromList(eids, eid);
+      bytes memory data = _createLzData(true, _singleton, _owners, _threshold, nonce, newEids);
+      fees[i] = _quote(eid, data, options, false).nativeFee;
     }
   }
 
@@ -350,11 +349,13 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
     external
     returns (bytes32 moduleTxHash)
   {
-    _saveState();
+    // TODO reactivate later
+    // _saveState();
   }
 
   function checkAfterModuleExecution(bytes32, bool) external {
-    _checkStateChange();
+    // TODO reactivate later
+    // _checkStateChange();
   }
 
   function _saveState() internal {
@@ -372,7 +373,7 @@ contract SyncSafeModule is OApp, HoldsBalance, ISyncSafeModule {
         || newThreshold != prevThreshold[msg.sender]
     ) {
       // owners or threshold changed, call lz
-      _broadcastNewStateToChains(newOwners, newThreshold);
+      _broadcastNewStateToEids(newOwners, newThreshold);
     }
 
     delete prevOwners[msg.sender];
