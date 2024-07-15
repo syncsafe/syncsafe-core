@@ -60,10 +60,10 @@ If you're interested in contributing, please open an issue in this repository
 
 Started at [ETH Global Brussels 2024](https://ethglobal.com/events/brussels) by:
 
-- [@mathisrgt](github.com/mathisrgt) (mathisrgt.eth, [Telegram](t.me/mathisrgt))
-- [@maxencerb](github.com/maxencerb) (maxencerb.eth, [Twitter](x.com/_maxencerb))
-- [@pybast](github.com/Pybast) (pybast.eth, [pybasteth](x.com/pybasteth))
-- [@raouf2ouf](github.com/raouf2ouf) ([Twitter](x.com/raouf2ouf))
+- [@mathisrgt](https://github.com/mathisrgt) (mathisrgt.eth, [Telegram](https://t.me/mathisrgt))
+- [@maxencerb](https://github.com/maxencerb) (maxencerb.eth, [Twitter](https://x.com/_maxencerb))
+- [@pybast](https://github.com/Pybast) (pybast.eth, [Twitter](https://x.com/pybasteth))
+- [@raouf2ouf](https://github.com/raouf2ouf) ([Twitter](https://x.com/raouf2ouf))
 
 ## License
 
